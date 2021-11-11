@@ -92,7 +92,6 @@ namespace OpenUtau.Core.Render {
                     item.progress = progress;
                     Resample(item);
                 });
-                ReleaseSourceTemp();
                 progress.Clear();
             });
             var master = new MasterAdapter(new WaveMix(faders));
@@ -145,7 +144,6 @@ namespace OpenUtau.Core.Render {
                         item.progress = progress;
                         Resample(item);
                     });
-                    ReleaseSourceTemp();
                     progress.Clear();
                 } catch (Exception e) {
                     if (!source.IsCancellationRequested) {
@@ -251,18 +249,6 @@ namespace OpenUtau.Core.Render {
                     File.Copy(source, dest);
                 }
             }
-        }
-
-        void ReleaseSourceTemp() {
-            var expire = DateTime.Now - TimeSpan.FromDays(7);
-            string path = PathManager.Inst.GetCachePath();
-            Log.Information($"ReleaseSourceTemp {path}");
-            Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(file =>
-                    !File.GetAttributes(file).HasFlag(FileAttributes.Directory)
-                        && File.GetCreationTime(file) < expire)
-                .ToList()
-                .ForEach(file => File.Delete(file));
         }
     }
 }
