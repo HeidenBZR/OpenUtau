@@ -17,6 +17,7 @@ namespace OpenUtau.App {
             InitLogging();
             InitOpenUtau();
             InitAudio();
+            System.Threading.Thread.CurrentThread.Priority = System.Threading.ThreadPriority.AboveNormal;
             Run(args);
         }
 

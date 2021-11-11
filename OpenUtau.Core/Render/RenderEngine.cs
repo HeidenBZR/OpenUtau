@@ -41,7 +41,7 @@ namespace OpenUtau.Core.Render {
             this.startTick = startTick;
         }
 
-        public Tuple<MasterAdapter, List<Fader>, CancellationTokenSource, Task> RenderProject(int startTick) {
+        public Tuple<MasterAdapter, List<Fader>, CancellationTokenSource, Task> RenderProject(int startTick, SemaphoreSlim semaphore) {
             var source = new CancellationTokenSource();
             var items = new List<RenderItem>();
             var faders = new List<Fader>();
@@ -87,6 +87,8 @@ namespace OpenUtau.Core.Render {
                     if (source.Token.IsCancellationRequested) {
                         return;
                     }
+                    Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+                    semaphore.WaitAsync();
                     item.progress = progress;
                     Resample(item);
                 });
@@ -119,12 +121,14 @@ namespace OpenUtau.Core.Render {
         public CancellationTokenSource PreRenderProject() {
             int threads = Util.Preferences.Default.PrerenderThreads;
             var source = new CancellationTokenSource();
+            var semaphore = new SemaphoreSlim(0, Util.Preferences.Default.PrerenderThreads);
             Task.Run(() => {
                 try {
-                    Thread.Sleep(200);
                     if (source.Token.IsCancellationRequested) {
                         return;
                     }
+                    Thread.CurrentThread.Priority = ThreadPriority.Lowest;
+                    semaphore.WaitAsync();
                     RenderItem[] items;
                     lock (project) {
                         items = PrepareProject(project, startTick)
