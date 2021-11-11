@@ -41,7 +41,7 @@ namespace OpenUtau.Core.Render {
             this.startTick = startTick;
         }
 
-        public Tuple<MasterAdapter, List<Fader>, CancellationTokenSource, Task> RenderProject(int startTick, SemaphoreSlim semaphore) {
+        public Tuple<MasterAdapter, List<Fader>, CancellationTokenSource, Task> RenderProject(int startTick) {
             var source = new CancellationTokenSource();
             var items = new List<RenderItem>();
             var faders = new List<Fader>();
@@ -79,6 +79,7 @@ namespace OpenUtau.Core.Render {
             items = items.OrderBy(item => item.PosMs).ToList();
             int threads = Util.Preferences.Default.PrerenderThreads;
             var progress = new Progress(items.Count);
+            var semaphore = new SemaphoreSlim(0, Util.Preferences.Default.PrerenderThreads);
             var task = Task.Run(() => {
                 var progress = new Progress(items.Count);
                 Parallel.ForEach(source: items, parallelOptions: new ParallelOptions() {
@@ -87,10 +88,10 @@ namespace OpenUtau.Core.Render {
                     if (source.Token.IsCancellationRequested) {
                         return;
                     }
-                    Thread.CurrentThread.Priority = ThreadPriority.Lowest;
                     semaphore.WaitAsync();
                     item.progress = progress;
                     Resample(item);
+                    semaphore.Release();
                 });
                 progress.Clear();
             });
@@ -126,8 +127,6 @@ namespace OpenUtau.Core.Render {
                     if (source.Token.IsCancellationRequested) {
                         return;
                     }
-                    Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-                    semaphore.WaitAsync();
                     RenderItem[] items;
                     lock (project) {
                         items = PrepareProject(project, startTick)
@@ -141,8 +140,10 @@ namespace OpenUtau.Core.Render {
                         if (source.Token.IsCancellationRequested) {
                             return;
                         }
+                        semaphore.WaitAsync();
                         item.progress = progress;
                         Resample(item);
+                        semaphore.Release();
                     });
                     progress.Clear();
                 } catch (Exception e) {

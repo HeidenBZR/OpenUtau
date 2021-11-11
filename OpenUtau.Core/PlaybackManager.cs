@@ -170,11 +170,10 @@ namespace OpenUtau.Core {
                 return;
             }
             StopPreRender();
-            var semaphore = new SemaphoreSlim(0, Util.Preferences.Default.PrerenderThreads);
             var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
             Task.Run(() => {
                 RenderEngine engine = new RenderEngine(project, driver, cache, tick);
-                var result = engine.RenderProject(tick, semaphore);
+                var result = engine.RenderProject(tick);
                 faders = result.Item2;
                 var source = result.Item3;
                 source = Interlocked.Exchange(ref playbakCancellationTokenSource, source);
